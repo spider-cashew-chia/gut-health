@@ -4,6 +4,7 @@ import SearchBar from './components/SearchBar.jsx';
 import FruitAndVegList from './components/FruitAndVegList.jsx';
 import EatenList from './components/EatenList.jsx';
 import { LeafIcon } from './components/Icons.jsx';
+import { fetchAppSettings } from './src/lib/sanityQueries.js';
 
 const WEEKLY_GOAL = 20;
 const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -12,6 +13,24 @@ export default function App() {
   const [eatenItems, setEatenItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [countdownDeadline, setCountdownDeadline] = useState(null);
+  // State for app title from Sanity
+  const [appTitle, setAppTitle] = useState('Gut Health Tracker');
+
+  // Fetch app settings from Sanity on mount
+  useEffect(() => {
+    const loadAppSettings = async () => {
+      try {
+        const settings = await fetchAppSettings();
+        if (settings && settings.title) {
+          setAppTitle(settings.title);
+        }
+      } catch (error) {
+        console.error('Failed to fetch app settings from Sanity:', error);
+        // Keep default title on error
+      }
+    };
+    loadAppSettings();
+  }, []);
 
   useEffect(() => {
     try {
@@ -30,24 +49,28 @@ export default function App() {
         }
       }
     } catch (error) {
-      console.error("Failed to load data from localStorage", error);
+      console.error('Failed to load data from localStorage', error);
     }
   }, []);
 
   const handleReset = useCallback(() => {
     const reset = () => {
-        setEatenItems([]);
-        setCountdownDeadline(null);
-        localStorage.removeItem('eatenItems');
-        localStorage.removeItem('countdownDeadline');
-    }
+      setEatenItems([]);
+      setCountdownDeadline(null);
+      localStorage.removeItem('eatenItems');
+      localStorage.removeItem('countdownDeadline');
+    };
 
     if (eatenItems.length > 0) {
-        if (window.confirm("Are you sure you want to reset your weekly tally? This action cannot be undone.")) {
-            reset();
-        }
-    } else {
+      if (
+        window.confirm(
+          'Are you sure you want to reset your weekly tally? This action cannot be undone.'
+        )
+      ) {
         reset();
+      }
+    } else {
+      reset();
     }
   }, [eatenItems.length]);
 
@@ -57,60 +80,70 @@ export default function App() {
     const interval = setInterval(() => {
       if (Date.now() >= countdownDeadline) {
         handleReset();
-        alert("Time's up! Your weekly tally has been reset. Great job, let's start a new week!");
+        alert(
+          "Time's up! Your weekly tally has been reset. Great job, let's start a new week!"
+        );
       }
     }, 1000);
 
     return () => clearInterval(interval);
   }, [countdownDeadline, handleReset]);
 
-  const handleAddItem = useCallback((item) => {
-    if (eatenItems.some(eatenItem => eatenItem.id === item.id)) {
-      return;
-    }
-    setSearchTerm('');
+  const handleAddItem = useCallback(
+    (item) => {
+      if (eatenItems.some((eatenItem) => eatenItem.id === item.id)) {
+        return;
+      }
+      setSearchTerm('');
 
-    let currentDeadline = countdownDeadline;
-    if (eatenItems.length === 0) {
+      let currentDeadline = countdownDeadline;
+      if (eatenItems.length === 0) {
         const newDeadline = Date.now() + SEVEN_DAYS_IN_MS;
         setCountdownDeadline(newDeadline);
         localStorage.setItem('countdownDeadline', newDeadline.toString());
         currentDeadline = newDeadline;
-    }
+      }
 
-    if(currentDeadline) { 
+      if (currentDeadline) {
         const newItems = [...eatenItems, item];
         setEatenItems(newItems);
         localStorage.setItem('eatenItems', JSON.stringify(newItems));
-    }
-  }, [eatenItems, countdownDeadline]);
+      }
+    },
+    [eatenItems, countdownDeadline]
+  );
 
   const handleSuggestItem = useCallback(() => {
     if (!searchTerm.trim()) return;
-    alert(`Thank you for your suggestion: "${searchTerm}". We will review it for inclusion in our list!`);
+    alert(
+      `Thank you for your suggestion: "${searchTerm}". We will review it for inclusion in our list!`
+    );
     setSearchTerm('');
   }, [searchTerm]);
 
-  const handleRemoveItem = useCallback((itemId) => {
-    const newItems = eatenItems.filter(item => item.id !== itemId);
-    setEatenItems(newItems);
+  const handleRemoveItem = useCallback(
+    (itemId) => {
+      const newItems = eatenItems.filter((item) => item.id !== itemId);
+      setEatenItems(newItems);
 
-    if (newItems.length === 0) {
+      if (newItems.length === 0) {
         setCountdownDeadline(null);
         localStorage.removeItem('eatenItems');
         localStorage.removeItem('countdownDeadline');
-    } else {
+      } else {
         localStorage.setItem('eatenItems', JSON.stringify(newItems));
-    }
-  }, [eatenItems]);
+      }
+    },
+    [eatenItems]
+  );
 
   const filteredItems = useMemo(() => {
     if (!searchTerm) {
       return [];
     }
-    const eatenIds = new Set(eatenItems.map(item => item.id));
+    const eatenIds = new Set(eatenItems.map((item) => item.id));
     return FRUITS_AND_VEGETABLES.filter(
-      item =>
+      (item) =>
         !eatenIds.has(item.id) &&
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
     ).slice(0, 10);
@@ -118,44 +151,46 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-        <div style={styles.content}>
-            <header style={styles.header}>
-                <div style={styles.headerTitle}>
-                    {/* <LeafIcon width={32} height={32} color="#10b981" /> */}
-                    <h1 style={styles.title}>Gut Health Tracker</h1>
-                </div>
-                <p style={styles.subtitle}>
-                    Aim to eat <span style={styles.boldSubtitle}>{WEEKLY_GOAL} different</span> fruits and vegetables each week.
-                </p>
-            </header>
+      <div style={styles.content}>
+        <header style={styles.header}>
+          <div style={styles.headerTitle}>
+            {/* <LeafIcon width={32} height={32} color="#10b981" /> */}
+            <h1 style={styles.title}>{appTitle}</h1>
+          </div>
+          <p style={styles.subtitle}>
+            Aim to eat{' '}
+            <span style={styles.boldSubtitle}>{WEEKLY_GOAL} different</span>{' '}
+            fruits and vegetables each week.
+          </p>
+        </header>
 
-            <main style={styles.mainContent}>
-                <div style={styles.card}>
-                    <h2 style={styles.cardTitle}>Add an Item</h2>
-                    <SearchBar
-                        value={searchTerm}
-                        onChangeText={setSearchTerm}
-                        placeholder="Type a fruit or vegetable..."
-                    />
-                    <FruitAndVegList
-                        items={filteredItems}
-                        onItemClick={handleAddItem}
-                        searchTerm={searchTerm}
-                        onSuggestItem={handleSuggestItem}
-                    />
-                </div>
+        <main style={styles.mainContent}>
+          <div style={styles.card}>
+            <h2 style={styles.cardTitle}>Add an Item</h2>
+            <SearchBar
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholder='Type a fruit or vegetable...'
+            />
+            <FruitAndVegList
+              items={filteredItems}
+              onItemClick={handleAddItem}
+              searchTerm={searchTerm}
+              onSuggestItem={handleSuggestItem}
+            />
+          </div>
 
-                <div style={styles.card}>
-                    <EatenList
-                        items={eatenItems}
-                        goal={WEEKLY_GOAL}
-                        onRemoveItem={handleRemoveItem}
-                        deadline={countdownDeadline}
-                        onReset={handleReset}
-                    />
-                </div>
-            </main>
-        </div>
+          <div style={styles.card}>
+            <EatenList
+              items={eatenItems}
+              goal={WEEKLY_GOAL}
+              onRemoveItem={handleRemoveItem}
+              deadline={countdownDeadline}
+              onReset={handleReset}
+            />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
