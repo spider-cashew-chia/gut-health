@@ -5,6 +5,7 @@ import FruitAndVegList from './components/FruitAndVegList.jsx';
 import EatenList from './components/EatenList.jsx';
 import { LeafIcon } from './components/Icons.jsx';
 import { fetchAppSettings } from './src/lib/sanityQueries.js';
+// test
 
 const WEEKLY_GOAL = 20;
 const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000;
